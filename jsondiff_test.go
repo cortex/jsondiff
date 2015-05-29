@@ -44,6 +44,17 @@ func TestSimpleRemove(t *testing.T) {
 	verifyPatch(t, a, b, expected)
 }
 
+func TestArrayAdd(t *testing.T) {
+	a := []byte(`[]`)
+
+	b := []byte(`[1]`)
+
+	expected := []byte(`[
+     { "op": "add", "path": "/1", "value":1}
+   ]`)
+	verifyPatch(t, a, b, expected)
+}
+
 type TestCase struct {
 	Doc           json.RawMessage `json:"doc"`      // The JSON document to test against
 	Patch         []PatchOp       `json:"patch"`    // The patch(es) to apply
@@ -54,9 +65,17 @@ type TestCase struct {
 }
 
 func TestSuite(t *testing.T) {
+	runJSONSuite(t, "tests/tests.json")
+}
+
+func TestSpecSuite(t *testing.T) {
+	runJSONSuite(t, "tests/spec_tests.json")
+}
+
+func runJSONSuite(t *testing.T, name string) {
 	var ok, failed, errors, skipped int
 
-	testf, err := os.Open("tests/spec_tests.json")
+	testf, err := os.Open(name)
 	if err != nil {
 		t.Fatalf("Failed to open test suite")
 	}
@@ -85,7 +104,7 @@ func TestSuite(t *testing.T) {
 			errors++
 			continue
 		}
-		t.Log("Generated patch", test.Patch)
+		t.Log("Generated patch", patch)
 
 		if !(reflect.DeepEqual(patch, test.Patch) ||
 			len(patch) == len(test.Patch) && len(patch) == 0) {
@@ -101,7 +120,6 @@ func TestSuite(t *testing.T) {
 	}
 	t.Logf("OK: %v Failed: %v Error: %v Skipped: %v", ok, failed, errors, skipped)
 }
-
 func verifyPatch(t *testing.T, in []byte, out []byte, expected []byte) {
 
 	patchObj, err := DiffBytes(in, out)
@@ -109,6 +127,7 @@ func verifyPatch(t *testing.T, in []byte, out []byte, expected []byte) {
 		t.Error(err)
 	}
 	patch, _ := json.Marshal(patchObj)
+	fmt.Println(string(patch))
 	obj, err := jsonpatch.DecodePatch(patch)
 	if err != nil {
 		t.Error(err)
@@ -129,3 +148,5 @@ func verifyPatch(t *testing.T, in []byte, out []byte, expected []byte) {
 		t.Fail()
 	}
 }
+
+//go:generate testgen tests/tests.json

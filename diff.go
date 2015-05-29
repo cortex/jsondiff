@@ -89,9 +89,13 @@ func Diff(doc1 interface{}, doc2 interface{}, root string) (ops []PatchOp, err e
 
 	case []interface{}:
 		t2 := doc2.([]interface{})
-		if len(t1) == len(t2) {
-			for i := range t1 {
-				Diff(t1[i], t2[i], path.Join(root, string(i)))
+		for i := range t2 {
+			if i >= len(t1) {
+				ops = append(ops, PatchOp{"add", path.Join(root, fmt.Sprintf("%v", i+1)), t2[i]})
+				continue
+			}
+			if t1[i] == t2[i] {
+				continue
 			}
 		}
 
