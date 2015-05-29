@@ -3,10 +3,11 @@ package jsondiff
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/evanphx/json-patch"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/evanphx/json-patch"
 )
 
 func TestEqual(t *testing.T) {
@@ -149,4 +150,54 @@ func verifyPatch(t *testing.T, in []byte, out []byte, expected []byte) {
 	}
 }
 
-//go:generate testgen tests/tests.json
+func verifyPatchResult(t *testing.T, doc []byte, patch []byte, expected []byte) {
+	p, err := NewPatchFromBytes(patch)
+	if err != nil {
+		t.Log("Couldn't parse patch: ", err)
+		t.Fail()
+	}
+	out, err := p.Apply(doc)
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	var expectedObj, outObj interface{}
+
+	err = json.Unmarshal(expected, expectedObj)
+	if err != nil {
+		t.Fatal("Failed to parse expected: ", err)
+	}
+
+	err = json.Unmarshal(out, &outObj)
+	if err != nil {
+		t.Fatal("Failed to parse patch output: ", err)
+	}
+
+	if !reflect.DeepEqual(expectedObj, outObj) {
+		t.Log("Not equal")
+		t.Logf("Out: %v", outObj)
+		t.Logf("Expected: %v", expectedObj)
+		t.Fail()
+	}
+}
+
+func verifyPatchError(t *testing.T, doc []byte, patch []byte, expectedError string) {
+
+	p, err := NewPatchFromBytes(patch)
+	if err != nil {
+		t.Log("Couldn't parse patch: ", err)
+		t.Fail()
+	}
+	_, err = p.Apply(doc)
+	if err == nil {
+		t.Fatal("Expected patch to return error: ", expectedError)
+	}
+	if err.Error() != expectedError {
+		t.Log("Expected error: ", expectedError)
+		t.Log("Received error: ", err.Error())
+		t.Fail()
+	}
+}
+
+//go:generate testgen -o gen_tests_test.go tests/tests.json
+//go:generate testgen -o gen_spec_tests_test.go tests/spec_tests.json
